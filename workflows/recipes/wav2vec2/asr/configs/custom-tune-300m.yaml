@@ -1,0 +1,36 @@
+# test_300m.yaml
+_base_: workflows/recipes/wav2vec2/asr/configs/ctc-finetune.yaml
+
+model:
+  name: "omniASR_CTC_300M"
+
+dataset:
+  storage_mode: "MANIFEST"
+
+  manifest_storage_config:
+    # 1. Point to the DIRECTORY containing train.tsv and train.wrd
+    path: "dataset/dry_run/data_manifest"  # <--- CHANGED: Directory, not file
+
+    # 2. Enable text reading (Trigger loading of .wrd files)
+    read_text: true                      # <--- CRITICAL: Defined in your code snippet
+
+  asr_task_config:
+     # 3. SAFETY: Lower min length so short "test" clips aren't skipped
+     min_audio_len: 16_000    # 1 second (Base was 2s)
+     max_audio_len: 480_000   # 30 seconds
+     max_num_elements: 3_000_000
+     normalize_audio: true
+
+optimizer:
+  config:
+    lr: 1e-04  # Higher LR for rapid convergence testing
+
+trainer:
+  grad_accumulation:
+    num_batches: 1 # No need for accumulation on 300M test
+
+regime:
+  num_steps: 100         # Stop quickly
+  log_interval: 10       # Log often
+  validate_after_n_steps: 0
+  checkpoint_every_n_steps: 0 # Don't save checkpoints
