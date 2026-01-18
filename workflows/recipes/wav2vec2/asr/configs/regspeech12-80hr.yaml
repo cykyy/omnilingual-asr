@@ -1,0 +1,74 @@
+# Fine-tuning config for omniASR_CTC_300M_v2 on RegSpeech12 dataset
+# Dataset: 80 hours training, 10 hours validation (Bengali regional speech)
+# START OF CONFIG
+
+# ============================================================================
+# MODEL - Pre-trained model to fine-tune
+# ============================================================================
+model:
+  name: "omniASR_CTC_300M_v2"  # 300M parameter CTC model (v2)
+  family: "wav2vec2_asr"
+
+# ============================================================================
+# DATASET - RegSpeech12 (80hr train / 10hr valid)
+# ============================================================================
+dataset:
+  name: "regspeech12"
+  storage_mode: "MANIFEST"
+  train_split: "train"         # 17,049 samples (~80 hours)
+  valid_split: "valid"         # 2,132 samples (~10 hours)
+
+  manifest_storage_config:
+    read_text: true
+
+  asr_task_config:
+    min_audio_len: 16_000      # 1 second minimum
+    max_audio_len: 480_000     # 30 seconds maximum
+    max_num_elements: 4_000_000  # ~8 samples per batch (with 30s max)
+    normalize_audio: true
+    example_shuffle_window: 1000  # Larger shuffle for better mixing
+
+# ============================================================================
+# TOKENIZER
+# ============================================================================
+tokenizer:
+  name: "omniASR_tokenizer_written_v2"
+
+# ============================================================================
+# OPTIMIZER - Tuned for 80-hour dataset
+# ============================================================================
+optimizer:
+  name: "adamw"
+  config:
+    lr: 5e-05                  # Higher LR for larger dataset
+    betas: [0.9, 0.98]
+    eps: 1e-08
+    weight_decay: 0.01         # Light regularization
+
+# ============================================================================
+# TRAINER
+# ============================================================================
+trainer:
+  freeze_encoder_for_n_steps: 0  # Fine-tune all weights
+  grad_accumulation:
+    num_batches: 4             # Effective batch ~32 samples
+  mixed_precision:
+    dtype: "bfloat16"
+
+# ============================================================================
+# REGIME - Training schedule for ~10 epochs
+# Calculation: 17,049 samples / 32 effective batch ≈ 533 steps/epoch
+# 10 epochs ≈ 5,330 steps, using 10,000 for safety margin
+# ============================================================================
+regime:
+  num_steps: 10_000            # ~18 epochs over 80hr data
+  score_metric: "wer"          # Track WER for best checkpoint
+  publish_metrics_every_n_steps: 100
+  validate_after_n_steps: 500  # Start validation after warmup
+  validate_every_n_steps: 1000 # Validate every ~2 epochs
+  checkpoint_every_n_steps: 2000
+
+gang: {}
+common: {}
+
+# END OF CONFIG

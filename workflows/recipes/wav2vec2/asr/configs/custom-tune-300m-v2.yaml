@@ -1,0 +1,87 @@
+# Fine-tuning config for omniASR_CTC_300M_v2 model
+# Optimized for small dataset (3 samples) - dry run / testing
+# START OF CONFIG
+
+# ============================================================================
+# MODEL - Which pre-trained model to fine-tune
+# ============================================================================
+model:
+  name: "omniASR_CTC_300M_v2"  # Model checkpoint name (v2 = latest version)
+  family: "wav2vec2_asr"       # Architecture type (don't change)
+
+# ============================================================================
+# DATASET - Where to load training data from
+# ============================================================================
+dataset:
+  name: "custom_dry_run"       # Arbitrary name for logging/identification
+  storage_mode: "MANIFEST"     # Format type: MANIFEST = TSV+WRD files
+  train_split: "train"         # Prefix for training files (train.tsv, train.wrd)
+  valid_split: "train"         # Prefix for validation files (use "valid" for separate set)
+
+  manifest_storage_config:
+    read_text: true            # Load transcriptions from .wrd file
+
+  asr_task_config:
+    min_audio_len: 16_000      # Min audio samples (16000 = 1 sec at 16kHz)
+    max_audio_len: 480_000     # Max audio samples (480000 = 30 sec at 16kHz)
+    max_num_elements: 1_200_000  # Reduced for 16GB GPU
+                               # Effective batch ≈ max_num_elements / avg_audio_len
+                               # Example: 1.2M / 480K ≈ 2-3 samples per batch
+    normalize_audio: true      # Normalize audio amplitude to [-1, 1]
+    example_shuffle_window: 20 # Shuffle buffer size (20 = shuffle 20 examples at a time)
+
+# ============================================================================
+# TOKENIZER - Text tokenizer (must match model version)
+# ============================================================================
+tokenizer:
+  name: "omniASR_tokenizer_written_v2"  # v2 tokenizer for v2 model
+
+# ============================================================================
+# OPTIMIZER - Training optimization settings
+# ============================================================================
+optimizer:
+  name: "adamw"                # Optimizer type (AdamW recommended)
+  config:
+    lr: 5e-06                  # Peak learning rate
+                               # Guidelines: <1hr data: 5e-6, 1-10hr: 1e-5, 100hr+: 5e-5
+    betas: [0.9, 0.98]         # Adam momentum params (default, rarely changed)
+    eps: 1e-08                 # Numerical stability (default)
+    weight_decay: 0.0          # L2 regularization (0 = none, try 0.01 for large datasets)
+
+# ============================================================================
+# TRAINER - Training behavior settings
+# ============================================================================
+trainer:
+  freeze_encoder_for_n_steps: 0  # Steps to keep encoder frozen (0 = train all weights)
+                                 # Use 10000+ when training decoder from scratch
+  grad_accumulation:
+    num_batches: 1             # Gradient accumulation steps
+                               # Effective batch = batch_size × num_batches
+                               # Increase if GPU memory limited
+  mixed_precision:
+    dtype: "bfloat16"          # Training precision (bfloat16 = faster, less memory)
+
+# ============================================================================
+# REGIME - Training schedule and checkpointing
+# ============================================================================
+regime:
+  num_steps: 50               # Total training steps
+                               # Formula: (samples × epochs) / effective_batch_size
+  score_metric: ~              # Metric for "best" checkpoint: "wer" or null (~)
+                               # null = save checkpoints by step only (for dry runs)
+  publish_metrics_every_n_steps: 50   # Log metrics every N steps
+  validate_after_n_steps: 0           # Start validation after N steps (set > num_steps to disable)
+  validate_every_n_steps: 100         # Run validation every N steps
+  checkpoint_every_n_steps: 100       # Save checkpoint every N steps
+
+# ============================================================================
+# DISTRIBUTED - Multi-GPU settings (empty = single GPU)
+# ============================================================================
+gang: {}
+
+# ============================================================================
+# COMMON - Shared settings (empty = use defaults)
+# ============================================================================
+common: {}
+
+# END OF CONFIG

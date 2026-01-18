@@ -5,6 +5,11 @@ __pycache__/
 *.so
 .Python
 
+dataset
+dataset/*
+output
+output/*
+
 # Build Artifacts
 build/
 dist/

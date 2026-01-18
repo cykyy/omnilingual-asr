@@ -1,36 +1,50 @@
-# test_300m.yaml
-_base_: workflows/recipes/wav2vec2/asr/configs/ctc-finetune.yaml
-
+# Work in progress. Still not 100% sure this works.
+# START OF CONFIG
 model:
   name: "omniASR_CTC_300M"
+  family: "wav2vec2_asr"  # Required field from default_config
 
 dataset:
+  name: "custom_dry_run"
   storage_mode: "MANIFEST"
+  train_split: "train"
+  valid_split: "train"
 
   manifest_storage_config:
-    # 1. Point to the DIRECTORY containing train.tsv and train.wrd
-    path: "dataset/dry_run/data_manifest"  # <--- CHANGED: Directory, not file
-
-    # 2. Enable text reading (Trigger loading of .wrd files)
-    read_text: true                      # <--- CRITICAL: Defined in your code snippet
+    read_text: true
 
   asr_task_config:
-     # 3. SAFETY: Lower min length so short "test" clips aren't skipped
-     min_audio_len: 16_000    # 1 second (Base was 2s)
-     max_audio_len: 480_000   # 30 seconds
-     max_num_elements: 3_000_000
-     normalize_audio: true
+    min_audio_len: 16_000
+    max_audio_len: 480_000
+    max_num_elements: 3_000_000
+    normalize_audio: true
+    example_shuffle_window: 20  # Shuffles 20 examples at a time
+
+tokenizer:
+  name: "omniASR_tokenizer_v1"
 
 optimizer:
+  name: "adamw"
   config:
-    lr: 1e-04  # Higher LR for rapid convergence testing
+    lr: 1e-04
+    betas: [0.9, 0.98]
+    eps: 1e-08
+    weight_decay: 0.0
 
 trainer:
   grad_accumulation:
-    num_batches: 1 # No need for accumulation on 300M test
+    num_batches: 1
+  mixed_precision:
+    dtype: "bfloat16"
 
 regime:
-  num_steps: 100         # Stop quickly
-  log_interval: 10       # Log often
+  num_steps: 2000
+  score_metric: "wer"
+  publish_metrics_every_n_steps: 50
   validate_after_n_steps: 0
-  checkpoint_every_n_steps: 0 # Don't save checkpoints
+  validate_every_n_steps: 100
+  checkpoint_every_n_steps: 200
+
+gang: {}  # Empty gang config for single GPU
+common: {} # Empty common config
+# END OF CONFIG
