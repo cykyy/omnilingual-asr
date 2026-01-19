@@ -1,0 +1,98 @@
+# Fine-tuning config for omniASR_LLM_1B_v2 on RegSpeech12 dataset
+# Requires 4x RTX 3090 (24GB each, 96GB total) with FSDP
+# Estimated training time: 12-20 hours for ~13.6 epochs
+# START OF CONFIG
+
+# ============================================================================
+# MODEL - 1B LLM variant (wav2vec2 encoder + LLaMA decoder)
+# ============================================================================
+model:
+  name: "omniASR_LLM_1B_v2"
+  family: "wav2vec2_llama"
+
+# ============================================================================
+# DATASET - RegSpeech12 (80hr train / 10hr valid)
+# ============================================================================
+dataset:
+  name: "regspeech12"
+  storage_mode: "MANIFEST"
+  train_split: "train"
+  valid_split: "valid"
+
+  manifest_storage_config:
+    read_text: true
+
+  asr_task_config:
+    min_audio_len: 16_000        # 1 second minimum
+    max_audio_len: 480_000       # 30 seconds maximum
+    # REDUCED for 1B model to fit in memory
+    max_num_elements: 800_000    # ~800K per GPU (down from 2.5M for 300M)
+    normalize_audio: true
+    example_shuffle_window: 1000
+
+# ============================================================================
+# TOKENIZER
+# ============================================================================
+tokenizer:
+  name: "omniASR_tokenizer_written_v2"
+
+# ============================================================================
+# OPTIMIZER
+# ============================================================================
+optimizer:
+  name: "adamw"
+  config:
+    lr: 3e-05                    # Slightly lower LR for larger model
+    betas: [0.9, 0.98]
+    eps: 1e-08
+    weight_decay: 0.01
+
+# ============================================================================
+# TRAINER - FSDP required for 1B model on 4x 24GB GPUs
+# ============================================================================
+trainer:
+  data_parallelism: "fsdp"       # REQUIRED for 1B model
+  fsdp:
+    granularity: "layer"         # Shard at layer level
+    version: "v2"
+    fp32_reduce: true            # Better numerical stability
+    reshard_after_forward: true  # Save memory
+  freeze_encoder_for_n_steps: 0
+  grad_accumulation:
+    num_batches: 2               # Increase to compensate for smaller batches
+  mixed_precision:
+    dtype: "bfloat16"            # Use bf16 for memory efficiency
+  activation_checkpointing:
+    mode: "selective"            # Enable gradient checkpointing to save memory
+    every_nth_layer: 2
+
+# ============================================================================
+# REGIME - Same steps as 300M for comparison
+# ============================================================================
+regime:
+  num_steps: 10_000              # Same as 300M baseline
+  score_metric: "wer"
+  publish_metrics_every_n_steps: 100
+  validate_after_n_steps: 500
+  validate_every_n_steps: 1000
+  checkpoint_every_n_steps: 2000
+
+gang:
+  tensor_parallel_size: 1        # No tensor parallelism needed
+
+common:
+  torch:
+    allow_tf32: true             # Enable TF32 for faster compute on 3090
+
+# END OF CONFIG
+#
+# Run with:
+#   torchrun --nproc_per_node=4 \
+#       -m workflows.recipes.wav2vec2.asr \
+#       --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-1b-llm-4gpu.yaml \
+#       output/
+#
+# If OOM, try:
+#   1. Reduce max_num_elements to 500_000
+#   2. Increase grad_accumulation.num_batches to 4
+#   3. Enable full activation checkpointing: mode: "full"

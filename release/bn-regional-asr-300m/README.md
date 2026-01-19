@@ -18,9 +18,14 @@ Fine-tuned version of `omniASR_CTC_300M_v2` on RegSpeech12 Bengali regional spee
 ## Model Details
 - **Base Model**: omniASR_CTC_300M_v2 (300M parameters)
 - **Tokenizer**: omniASR_tokenizer_written_v2
-- **Training Data**: RegSpeech12 (80hr train, 10hr valid)
+- **Training Data**: RegSpeech12 (17,049 samples, ~80hr train, ~10hr valid)
 - **Training Steps**: 10,000
+- **Epochs**: 13.6
 - **Learning Rate**: 5e-05
+- **Optimizer**: AdamW (β₁=0.9, β₂=0.98, weight_decay=0.01)
+- **LR Scheduler**: Tri-stage (10% warmup, 40% hold, 50% decay)
+- **Training Time**: ~6.4 hours (single GPU)
+- **Final WER**: 73.5% (on RegSpeech12 test set)
 
 ## Usage
 

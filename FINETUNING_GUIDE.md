@@ -317,11 +317,205 @@ python run_pipeline.py path/to/audio.wav
 
 ---
 
+## Calculating Training Epochs
+
+**Important for thesis/papers**: fairseq2 uses dynamic batching, so simple calculations like `steps × batch_size / samples` give incorrect results.
+
+### Official Methods to Get Epoch Count
+
+**Method 1: From Checkpoint (Most Reliable)**
+
+```python
+import torch
+ckpt = torch.load('output/ws_1.XXXXX/checkpoints/step_10000/trainer/rank_00.pt',
+                  map_location='cpu', weights_only=False)
+completed_epochs = ckpt['_data_epoch_nr'] - 1  # _data_epoch_nr is current epoch (1-indexed)
+print(f"Completed epochs: {completed_epochs}")
+```
+
+**Method 2: From Training Logs**
+
+Look for lines like:
+```
+End of epoch 13 reached after step 9555.
+```
+
+Or check `Data Epoch: X` in Train Metrics.
+
+**Method 3: Use the Calculate Epochs Script**
+
+```bash
+python scripts/calculate_epochs.py --output-dir output/ws_1.XXXXX --manifest dataset/YOUR_DATASET/data_manifest/train.tsv
+```
+
+This script reads from checkpoint, logs, and config to give you accurate epoch counts.
+
+### Why Config-Based Estimates Are Wrong
+
+The naive calculation:
+```
+epochs = (steps × batch_size × grad_accum) / training_samples
+```
+
+Gives **incorrect results** because:
+- fairseq2 uses LENGTH batching (batches vary by audio duration)
+- Actual batch sizes are ~22-23, not the configured 64
+- Dynamic batching optimizes GPU memory, not sample count
+
+**Example**: For 10,000 steps with config batch_size=8, grad_accum=8:
+- Naive estimate: 37.5 epochs
+- Actual (from checkpoint): 13.6 epochs
+
+### Training Summary Example
+
+| Parameter | Value |
+|-----------|-------|
+| Training samples | 17,049 |
+| Training steps | 10,000 |
+| Total examples processed | 231,881 |
+| **Epochs** | **13.6** |
+| Training time | ~6.4 hours |
+
+---
+
+## Extended Training Experiments
+
+### Available Training Configs
+
+| Config | Model | Epochs | GPUs | Est. Time |
+|--------|-------|--------|------|-----------|
+| `regspeech12-4gpu.yaml` | 300M CTC | ~54 | 4 | ~10 hrs |
+| `regspeech12-300m-50ep-4gpu.yaml` | 300M CTC | ~50 | 4 | ~10 hrs |
+| `regspeech12-1b-llm-4gpu.yaml` | 1B LLM | ~13.6 | 4 | ~15 hrs |
+
+### 50-Epoch Training (300M CTC on 4 GPUs)
+
+For extended training to improve WER:
+
+```bash
+torchrun --nproc_per_node=4 \
+    -m workflows.recipes.wav2vec2.asr \
+    --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-300m-50ep-4gpu.yaml \
+    output/
+```
+
+**Config highlights** (`regspeech12-300m-50ep-4gpu.yaml`):
+- Steps: 9,500 (≈50 epochs on 4 GPUs)
+- Learning rate: 3e-05 (lower for longer training)
+- Validation: Every 500 steps
+- Checkpoints: Every 1000 steps, keeps best 3 by WER
+
+**Evaluate after training:**
+```bash
+python -m workflows.recipes.wav2vec2.asr.eval \
+    --config model.path=output/ws_4.XXXXXXXX/checkpoints/step_9500/model \
+    --config model.family=wav2vec2_asr \
+    --config model.arch=300m_v2 \
+    --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml \
+    eval_300m_50ep/
+```
+
+### 1B LLM Training (4 GPUs with FSDP)
+
+For training larger LLM-based models:
+
+```bash
+torchrun --nproc_per_node=4 \
+    -m workflows.recipes.wav2vec2.asr \
+    --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-1b-llm-4gpu.yaml \
+    output/
+```
+
+**Requirements:**
+- 4x GPUs with 24GB+ VRAM (e.g., RTX 3090)
+- FSDP enabled (automatic in config)
+- ~15-20 hours for ~13.6 epochs
+
+**Evaluate:**
+```bash
+python -m workflows.recipes.wav2vec2.asr.eval \
+    --config model.path=output/ws_4.XXXXXXXX/checkpoints/step_10000/model \
+    --config model.family=wav2vec2_llama \
+    --config model.arch=1b_v2 \
+    --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-1b-llm-test.yaml \
+    eval_1b_llm/
+```
+
+### CTC vs LLM Comparison
+
+| Aspect | CTC | LLM (LLaMA decoder) |
+|--------|-----|---------------------|
+| Output modeling | Conditionally independent | Autoregressive |
+| Language model | None built-in | Implicit in decoder |
+| Inference speed | Fast (parallel) | Slower (sequential) |
+| Memory (1B model) | ~10 GB | ~30 GB (needs FSDP) |
+| Typical WER | Higher | 5-15% relative improvement |
+| Best for | Streaming, real-time | Offline, accuracy-critical |
+
+### Experimental Plan for Thesis
+
+| Exp | Model | Epochs | Config | Purpose |
+|-----|-------|--------|--------|---------|
+| 1 | 300M CTC | 13.6 | `regspeech12-4gpu.yaml` | Baseline |
+| 2 | 300M CTC | 50 | `regspeech12-300m-50ep-4gpu.yaml` | Extended training |
+| 3 | 1B LLM | 13.6 | `regspeech12-1b-llm-4gpu.yaml` | Architecture comparison |
+
+**Expected results** (RegSpeech12 Bengali regional):
+
+| Model | Zero-shot | Fine-tuned |
+|-------|-----------|------------|
+| 300M CTC (13 ep) | 97.9% WER | 73.5% WER |
+| 300M CTC (50 ep) | - | ~60-65% WER (est.) |
+| 1B LLM (13 ep) | TBD | ~60-68% WER (est.) |
+
+**Note**: Achieving <20% WER on 80hr regional data typically requires additional techniques:
+- More training data (500+ hours)
+- Data augmentation (speed perturbation, noise)
+- External language model integration
+- Domain-specific tokenizer
+
+---
+
+## Publishing Fine-tuned Models
+
+### HuggingFace
+
+```bash
+pip install huggingface_hub
+python -c "from huggingface_hub import login; login()"
+
+# Create repo and upload
+python -c "
+from huggingface_hub import HfApi
+api = HfApi()
+api.create_repo('YOUR_USERNAME/model-name', repo_type='model')
+api.upload_folder(
+    folder_path='release/your-model/',
+    repo_id='YOUR_USERNAME/model-name',
+    repo_type='model'
+)
+"
+```
+
+### GitHub Release
+
+```bash
+git tag -a v1.0.0 -m "Model release"
+git push origin v1.0.0
+gh release create v1.0.0 --title "Model v1.0.0" --notes "Description here"
+```
+
+---
+
 ## Quick Reference
 
 | Task | Command |
 |------|---------|
-| Train (4 GPU) | `torchrun --nproc_per_node=4 -m workflows.recipes.wav2vec2.asr --config-file CONFIG output/` |
-| Eval checkpoint | `python -m workflows.recipes.wav2vec2.asr.eval --config model.path=PATH --config model.family=wav2vec2_asr --config model.arch=300m_v2 --config-file EVAL_CONFIG output/` |
-| Eval baseline | `python -m workflows.recipes.wav2vec2.asr.eval --config model.name=omniASR_CTC_300M_v2 --config model.path=null --config-file EVAL_CONFIG output/` |
+| Train 300M (4 GPU) | `torchrun --nproc_per_node=4 -m workflows.recipes.wav2vec2.asr --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-4gpu.yaml output/` |
+| Train 300M 50ep (4 GPU) | `torchrun --nproc_per_node=4 -m workflows.recipes.wav2vec2.asr --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-300m-50ep-4gpu.yaml output/` |
+| Train 1B LLM (4 GPU) | `torchrun --nproc_per_node=4 -m workflows.recipes.wav2vec2.asr --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-1b-llm-4gpu.yaml output/` |
+| Eval CTC checkpoint | `python -m workflows.recipes.wav2vec2.asr.eval --config model.path=PATH --config model.family=wav2vec2_asr --config model.arch=300m_v2 --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml output/` |
+| Eval LLM checkpoint | `python -m workflows.recipes.wav2vec2.asr.eval --config model.path=PATH --config model.family=wav2vec2_llama --config model.arch=1b_v2 --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-1b-llm-test.yaml output/` |
+| Eval baseline | `python -m workflows.recipes.wav2vec2.asr.eval --config model.name=omniASR_CTC_300M_v2 --config model.path=null --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml output/` |
 | Inference | `python run_pipeline.py audio.wav` |
+| Calculate epochs | `python scripts/calculate_epochs.py --output-dir output/ws_1.XXXXX --manifest path/to/train.tsv` |

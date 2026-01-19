@@ -1,0 +1,110 @@
+# Fine-tuning config for omniASR_CTC_300M_v2 on RegSpeech12 - 50 EPOCHS
+# Optimized for 4x RTX 3090 (24GB each, 96GB total)
+# Estimated training time: ~10 hours
+#
+# Epoch calculation:
+#   - 1 GPU, 10K steps = 13.6 epochs
+#   - 4 GPUs (DDP) = 4x throughput
+#   - 9,500 steps on 4 GPUs ≈ 51 epochs
+#
+# START OF CONFIG
+
+# ============================================================================
+# MODEL
+# ============================================================================
+model:
+  name: "omniASR_CTC_300M_v2"
+  family: "wav2vec2_asr"
+
+# ============================================================================
+# DATASET - RegSpeech12 (80hr train / 10hr valid)
+# ============================================================================
+dataset:
+  name: "regspeech12"
+  storage_mode: "MANIFEST"
+  train_split: "train"
+  valid_split: "valid"
+
+  manifest_storage_config:
+    read_text: true
+
+  asr_task_config:
+    min_audio_len: 16_000        # 1 second minimum
+    max_audio_len: 480_000       # 30 seconds maximum
+    max_num_elements: 2_500_000  # 2.5M per GPU (24GB fits comfortably)
+    normalize_audio: true
+    example_shuffle_window: 1000
+
+# ============================================================================
+# TOKENIZER
+# ============================================================================
+tokenizer:
+  name: "omniASR_tokenizer_written_v2"
+
+# ============================================================================
+# OPTIMIZER - Slightly lower LR for longer training
+# ============================================================================
+optimizer:
+  name: "adamw"
+  config:
+    lr: 3e-05                    # Lower LR for longer training (was 5e-05)
+    betas: [0.9, 0.98]
+    eps: 1e-08
+    weight_decay: 0.01
+
+# ============================================================================
+# LR SCHEDULER - Adjusted for longer training
+# ============================================================================
+lr_scheduler:
+  name: "tri_stage"
+  config:
+    stage_ratio: [0.05, 0.45, 0.5]  # 5% warmup, 45% hold, 50% decay
+    start_lr_scale: 0.01
+    final_lr_scale: 0.01            # Lower final LR
+
+# ============================================================================
+# TRAINER - Optimized for 4 GPUs
+# ============================================================================
+trainer:
+  freeze_encoder_for_n_steps: 0
+  grad_accumulation:
+    num_batches: 1               # No accumulation needed with 4 GPUs
+  mixed_precision:
+    dtype: "bfloat16"
+
+# ============================================================================
+# REGIME - 50 epochs (~9,500 steps on 4 GPUs)
+# ============================================================================
+regime:
+  num_steps: 9_500               # ~50 epochs on 4 GPUs
+  score_metric: "wer"
+  publish_metrics_every_n_steps: 100
+  validate_after_n_steps: 500
+  validate_every_n_steps: 500    # More frequent validation to track progress
+  checkpoint_every_n_steps: 1000 # Checkpoint every ~5 epochs
+  keep_last_n_checkpoints: 5     # Keep last 5 checkpoints
+  keep_best_n_checkpoints: 3     # Keep 3 best by WER
+
+gang: {}
+common:
+  torch:
+    allow_tf32: true             # Enable TF32 for faster compute
+
+# END OF CONFIG
+#
+# Run with:
+#   torchrun --nproc_per_node=4 \
+#       -m workflows.recipes.wav2vec2.asr \
+#       --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-300m-50ep-4gpu.yaml \
+#       output/
+#
+# After training, evaluate with:
+#   python -m workflows.recipes.wav2vec2.asr.eval \
+#       --config model.path=output/ws_4.XXXXXXXX/checkpoints/step_9500/model \
+#       --config model.family=wav2vec2_asr \
+#       --config model.arch=300m_v2 \
+#       --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml \
+#       eval_300m_50ep/
+#
+# Calculate epochs:
+#   python scripts/calculate_epochs.py --output-dir output/ws_4.XXXXXXXX

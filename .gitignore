@@ -78,3 +78,4 @@ dmypy.json
 
 # Profiling
 .prof
+/release/bn-regional-asr-300m/model.pt

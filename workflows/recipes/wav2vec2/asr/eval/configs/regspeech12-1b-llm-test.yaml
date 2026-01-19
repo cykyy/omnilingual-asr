@@ -1,0 +1,71 @@
+# Evaluation config for omniASR_LLM_1B_v2 fine-tuned on RegSpeech12
+# Computes WER on the 10-hour test split
+#
+# Usage:
+#   python -m workflows.recipes.wav2vec2.asr.eval \
+#       --config model.path=output/YOUR_OUTPUT_DIR/checkpoints/step_10000/model \
+#       --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-1b-llm-test.yaml \
+#       eval_1b_llm/
+
+# ============================================================================
+# MODEL - 1B LLM variant
+# ============================================================================
+model:
+  name: "omniASR_LLM_1B_v2"
+  path: null                      # Override with --config model.path=...
+  family: "wav2vec2_llama"
+  arch: "1b_v2"
+
+# ============================================================================
+# TOKENIZER
+# ============================================================================
+tokenizer:
+  name: "omniASR_tokenizer_written_v2"
+
+# ============================================================================
+# DATASET - Test split of RegSpeech12
+# ============================================================================
+dataset:
+  name: "regspeech12"
+  valid_split: "test"             # Use test split (10 hours, 2132 samples)
+  storage_mode: "MANIFEST"
+  task_mode: "ASR"
+
+  manifest_storage_config:
+    read_text: true
+
+  asr_task_config:
+    min_audio_len: 16_000         # 1 second
+    max_audio_len: 480_000        # 30 seconds
+    max_num_elements: 500_000     # Reduced for 1B model memory
+    normalize_audio: true
+    example_shuffle_window: 1     # No shuffle for eval
+
+# ============================================================================
+# EVALUATOR
+# ============================================================================
+evaluator:
+  amp: true
+  amp_dtype: "bfloat16"
+
+gang: {}
+common: {}
+
+# ============================================================================
+# NOTES
+# ============================================================================
+#
+# Evaluate fine-tuned checkpoint:
+#   python -m workflows.recipes.wav2vec2.asr.eval \
+#       --config model.path=output/ws_X.XXXXXXXX/checkpoints/step_10000/model \
+#       --config model.family=wav2vec2_llama \
+#       --config model.arch=1b_v2 \
+#       --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-1b-llm-test.yaml \
+#       eval_1b_llm/
+#
+# Evaluate zero-shot baseline (pre-trained, no fine-tuning):
+#   python -m workflows.recipes.wav2vec2.asr.eval \
+#       --config model.name=omniASR_LLM_1B_v2 \
+#       --config model.path=null \
+#       --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-1b-llm-test.yaml \
+#       eval_1b_llm_baseline/
