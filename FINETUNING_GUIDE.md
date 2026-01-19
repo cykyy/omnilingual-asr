@@ -441,7 +441,7 @@ common: {}
 # Run training (output_dir is a positional argument)
 python -m workflows.recipes.wav2vec2.asr \
     --config-file workflows/recipes/wav2vec2/asr/configs/custom-tune-300m-v2.yaml \
-    output/
+    output/ 2>&1 | tee asr.log
 ```
 
 ### Using the Pipeline Script

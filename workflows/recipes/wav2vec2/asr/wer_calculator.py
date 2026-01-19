@@ -178,6 +178,8 @@ class WerCalculator:
     def _generate_hypotheses(
         self, logits: Tensor, logit_layout: BatchLayout
     ) -> tuple[Tensor, BatchLayout]:
+        import torch
+
         hyp_seqs = []
 
         # Get the greedy token (i.e. unit) output of the model.
@@ -187,6 +189,11 @@ class WerCalculator:
 
             # (S - blank)
             hyp_seq = hyp_seq[hyp_seq != self._blank_label]
+
+            # Handle empty sequences (model outputs all blanks)
+            # Add a single PAD token to avoid pad_seqs error
+            if hyp_seq.numel() == 0:
+                hyp_seq = torch.tensor([self._pad_idx], device=logits.device)
 
             hyp_seqs.append(hyp_seq)
 
