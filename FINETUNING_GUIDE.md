@@ -507,6 +507,82 @@ Pre-made config: `configs/regspeech12-4gpu.yaml`
 
 ---
 
+## Evaluating the Trained Model
+
+After training completes, evaluate on the test set to get final WER metrics.
+
+### Official Evaluation Command
+
+```bash
+python -m workflows.recipes.wav2vec2.asr.eval \
+    --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml \
+    eval_output/
+```
+
+### Creating an Eval Config
+
+Create a config file (e.g., `eval/configs/my-eval.yaml`):
+
+```yaml
+# Model - point to your checkpoint
+model:
+  name: "omniASR_CTC_300M_v2"  # Base architecture
+  path: "output/ws_1.xxxxx/checkpoints/step_10000"  # Your checkpoint
+
+tokenizer:
+  name: "omniASR_tokenizer_written_v2"
+
+# Dataset - test split
+dataset:
+  name: "regspeech12"
+  valid_split: "test"  # Evaluate on test set
+  storage_mode: "MANIFEST"
+  task_mode: "ASR"
+  manifest_storage_config:
+    read_text: true
+  asr_task_config:
+    min_audio_len: 16_000
+    max_audio_len: 480_000
+    max_num_elements: 1_000_000
+    normalize_audio: true
+    example_shuffle_window: 1  # No shuffle for eval
+
+evaluator:
+  amp: true
+  amp_dtype: "bfloat16"
+
+gang: {}
+common: {}
+```
+
+### Evaluation Output
+
+The evaluation will output:
+- **WER (Word Error Rate)**: Primary metric for ASR quality
+- **UER (Unit Error Rate)**: Character-level error rate
+- **CTC Loss**: Model's loss on test data
+- Transcriptions saved to `eval_output/transcriptions/`
+
+### Comparing Checkpoints
+
+Evaluate multiple checkpoints to find the best:
+
+```bash
+# Evaluate step 6000
+python -m workflows.recipes.wav2vec2.asr.eval \
+    --config model.path=output/ws_1.xxxxx/checkpoints/step_6000 \
+    --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml \
+    eval_step6000/
+
+# Evaluate step 10000
+python -m workflows.recipes.wav2vec2.asr.eval \
+    --config model.path=output/ws_1.xxxxx/checkpoints/step_10000 \
+    --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml \
+    eval_step10000/
+```
+
+---
+
 ## Post-Training Inference
 
 ### Creating an Asset Card
