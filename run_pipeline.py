@@ -4,7 +4,8 @@ import torch
 # 1. Initialize Pipeline
 print("Loading Pipeline...")
 pipeline = ASRInferencePipeline(
-    model_card="finetuned2",
+    # model_card="bn_regional_CTC_300M_v2",
+    model_card="omniASR_CTC_300M_v2",
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 )
 

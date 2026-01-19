@@ -7,6 +7,7 @@
 model:
   name: "omniASR_CTC_300M_v2"  # Base model architecture
   path: "output/ws_1.ecbbc39f/checkpoints/step_10000"  # Fine-tuned checkpoint
+  family: "wav2vec2_asr"
 
 # ============================================================================
 # TOKENIZER

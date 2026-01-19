@@ -1,14 +1,6 @@
-Test file. not working. crashes. Ignore this file.
+To run WER with test split:
 ```
-cat <<EOF > ~/.config/fairseq2/assets/dataset/omn_ctc_300m_dry_run_v2.yaml
-name: "omn_ctc_300m_dry_run_v2"
-dataset_family: "manifest_asr_dataset"
-# Providing all common field aliases to ensure one hits:
-data: "/root/omnilingual-asr/dataset/dry_run/data_manifest"
-path: "/root/omnilingual-asr/dataset/dry_run/data_manifest"
-location: "/root/omnilingual-asr/dataset/dry_run/data_manifest"
-manifest_dir: "/root/omnilingual-asr/dataset/dry_run/data_manifest"
-EOF
+python -m workflows.recipes.wav2vec2.asr.eval --config model.path=output/ws_1.ecbbc39f/checkpoints/step_10000/model --config model.family=wav2vec2_asr --config model.arch=300m_v2 --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml eval_zero_shot_omniASR_CTC_300M_v2/
 ```
 
 pip install tensorboard

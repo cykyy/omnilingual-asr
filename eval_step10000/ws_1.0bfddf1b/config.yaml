@@ -1,0 +1,141 @@
+model:
+  name: omniASR_CTC_300M_v2
+  path: output/ws_1.ecbbc39f/checkpoints/step_10000/model/pp_00/tp_00/sdp_00.pt
+  family: wav2vec2_asr
+  arch: null
+  config_overrides: null
+  dtype: float32
+  mmap: false
+  compile: false
+  compile_options:
+    fullgraph: false
+    dynamic: null
+    mode: default
+    backend: inductor
+    backend_options: null
+dataset:
+  name: regspeech12
+  family: null
+  config_overrides: null
+  valid_split: test
+  storage_mode: MANIFEST
+  task_mode: ASR
+  manifest_storage_config:
+    sync_batches: true
+    sync_mode: UNTIL_FIRST
+    read_text: true
+    cached_fd_count: 1000
+  mixture_parquet_storage_config:
+    sync_batches: true
+    sync_mode: UNTIL_FIRST
+    fragment_streaming:
+      parquet_path: ''
+      filesystem: null
+      name: null
+      weight: 1.0
+      partition_filters: null
+      limit:
+        fraction_of_files: null
+        nb_files: null
+        nb_fragments: null
+        nb_rows: null
+      split_to_row_groups: true
+      seed: 2
+      fragment_shuffle_window: 0
+      files_circular_shift: false
+      nb_epochs: null
+    fragment_loading:
+      columns: {}
+      rename_columns: true
+      add_fragment_traces: false
+      drop_null: false
+      min_batch_size: 1
+      filters: null
+      non_deterministic_read: false
+      use_threads: false
+      nb_prefetch: 1
+      num_parallel_fragments: 1
+      cache: true
+      cache_dir: null
+    dataset_summary_path: null
+    beta_corpus: null
+    beta_language: null
+    pa_cpu_count: 20
+    max_workers: 30
+    split_column: split
+    num_prefetch: 1
+    parquet_path_name: _parquet_path
+    sampling_seed: 261
+  asr_task_config:
+    min_audio_len: 16000
+    max_audio_len: 480000
+    batching_strategy: LENGTH
+    batch_size: 8
+    num_seqs_multiple_of: 8
+    max_num_elements: 1000000
+    max_bucket_size: null
+    drop_remainder: false
+    filter_long_text_threshold: null
+    remove_unknown: false
+    min_samples_per_char: 160
+    normalize_audio: true
+    use_fbank: false
+    spec_aug_p: null
+    spec_aug_freq_mask_param: 80
+    spec_aug_time_mask_param: 80
+    unified_audio_feature_keys: true
+    example_shuffle_window: 1
+    batch_shuffle_window: 1000
+    npc: 10
+    seed: 2
+    no_padding: false
+    max_num_batches: null
+    num_prefetch: 4
+tokenizer:
+  name: omniASR_tokenizer_written_v2
+  path: null
+  family: null
+  config_overrides: null
+gang:
+  tensor_parallel_size: 1
+  timeout: 15
+  high_priority: true
+evaluator:
+  amp: true
+  amp_dtype: bfloat16
+common:
+  torch:
+    num_threads: null
+    allow_tf32: true
+    fp16_reduced_precision: true
+    bf16_reduced_precision: true
+    default_sdpa: torch
+    compiled_region_activation_memory_budget: 1.0
+  metric_recorders:
+    tensorboard:
+      enabled: true
+    wandb:
+      enabled: false
+      entity: null
+      project: null
+      run_id: persistent
+      run_name: null
+      group: null
+      job_type: null
+      resume_mode: null
+  profilers:
+    torch:
+      enabled: false
+      skip_n_steps: 4
+      wait_n_steps: 0
+      num_warmup_steps: 1
+      num_active_steps: 4
+      repeat: 1
+  assets:
+    extra_paths: []
+    prev_checkpoint_dir: null
+  seed: 2
+  debug: false
+  cluster: auto
+  no_sweep_dir: false
+  sweep_format: ws_{world_size}.{hash}
