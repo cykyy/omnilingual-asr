@@ -457,14 +457,47 @@ python run_pipeline.py \
 
 ### Multi-GPU Training
 
-For distributed training across multiple GPUs:
+For distributed training across multiple GPUs, use `torchrun`:
 
 ```bash
 torchrun --nproc_per_node=4 \
     -m workflows.recipes.wav2vec2.asr \
-    --config-file workflows/recipes/wav2vec2/asr/configs/custom-tune-300m-v2.yaml \
+    --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-4gpu.yaml \
     output/
 ```
+
+#### Multi-GPU Config Adjustments
+
+When using multiple GPUs, adjust these parameters:
+
+| Parameter | 1 GPU (16GB) | 4 GPUs (24GB each) | Reason |
+|-----------|--------------|-------------------|--------|
+| `max_num_elements` | 1,000,000 | 2,500,000 | More VRAM per GPU |
+| `grad_accumulation` | 8 | 1 | 4 GPUs = 4x batch, no accum needed |
+| `num_steps` | 10,000 | 10,000 | Same steps = more epochs |
+
+#### GPU Configurations Comparison
+
+| Setup | VRAM | Training Time (10K steps) | Cost |
+|-------|------|---------------------------|------|
+| 1x 16GB | 16GB | ~8 hours | ~$400 |
+| 4x RTX 3060 (12GB) | 48GB | ~3.5 hours | ~$1,200 |
+| 1x RTX 6000 Ada (48GB) | 48GB | ~2.5 hours | ~$6,500 |
+| **4x RTX 3090 (24GB)** | **96GB** | **~1.5-2 hours** | ~$3,500 |
+
+#### Example: 4x RTX 3090 Config
+
+```yaml
+# Key settings for 4x RTX 3090 (24GB each)
+asr_task_config:
+  max_num_elements: 2_500_000  # 2.5M per GPU
+
+trainer:
+  grad_accumulation:
+    num_batches: 1  # No accumulation with 4 GPUs
+```
+
+Pre-made config: `configs/regspeech12-4gpu.yaml`
 
 ### Monitoring Training
 
