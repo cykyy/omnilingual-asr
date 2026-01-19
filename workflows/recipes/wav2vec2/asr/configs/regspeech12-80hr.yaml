@@ -24,7 +24,7 @@ dataset:
   asr_task_config:
     min_audio_len: 16_000      # 1 second minimum
     max_audio_len: 480_000     # 30 seconds maximum
-    max_num_elements: 4_000_000  # ~8 samples per batch (with 30s max)
+    max_num_elements: 1_000_000  # Reduced for 16GB GPU (~2 samples/batch)
     normalize_audio: true
     example_shuffle_window: 1000  # Larger shuffle for better mixing
 
@@ -51,7 +51,7 @@ optimizer:
 trainer:
   freeze_encoder_for_n_steps: 0  # Fine-tune all weights
   grad_accumulation:
-    num_batches: 4             # Effective batch ~32 samples
+    num_batches: 8             # Increased to compensate for smaller batch
   mixed_precision:
     dtype: "bfloat16"
 
@@ -62,10 +62,10 @@ trainer:
 # ============================================================================
 regime:
   num_steps: 10_000            # ~18 epochs over 80hr data
-  score_metric: "wer"          # Track WER for best checkpoint
+  score_metric: ~              # Disable WER (can cause errors early in training)
   publish_metrics_every_n_steps: 100
-  validate_after_n_steps: 500  # Start validation after warmup
-  validate_every_n_steps: 1000 # Validate every ~2 epochs
+  validate_after_n_steps: 2000 # Delay validation until model produces outputs
+  validate_every_n_steps: 2000 # Validate less frequently
   checkpoint_every_n_steps: 2000
 
 gang: {}
