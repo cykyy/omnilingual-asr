@@ -1,0 +1,87 @@
+# Fine-tuning config for omniASR_CTC_300M_v2 on RegSpeech12 dataset
+# Optimized for 4x RTX 4060 Ti (16GB each, 64GB total)
+# For fair comparison with LLM 300M model
+# START OF CONFIG
+
+# ============================================================================
+# MODEL
+# ============================================================================
+model:
+  name: "omniASR_CTC_300M_v2"
+  family: "wav2vec2_asr"
+
+# ============================================================================
+# DATASET - RegSpeech12 (80hr train / 10hr valid)
+# ============================================================================
+dataset:
+  name: "regspeech12"
+  storage_mode: "MANIFEST"
+  train_split: "train"
+  valid_split: "valid"
+
+  manifest_storage_config:
+    read_text: true
+
+  asr_task_config:
+    min_audio_len: 16_000        # 1 second minimum
+    max_audio_len: 480_000       # 30 seconds maximum
+    max_num_elements: 1_500_000  # Reduced for 16GB GPUs
+    normalize_audio: true
+    example_shuffle_window: 1000
+
+# ============================================================================
+# TOKENIZER
+# ============================================================================
+tokenizer:
+  name: "omniASR_tokenizer_written_v2"
+
+# ============================================================================
+# OPTIMIZER
+# ============================================================================
+optimizer:
+  name: "adamw"
+  config:
+    lr: 5e-05
+    betas: [0.9, 0.98]
+    eps: 1e-08
+    weight_decay: 0.01
+
+# ============================================================================
+# TRAINER - Optimized for 4x 16GB GPUs
+# ============================================================================
+trainer:
+  freeze_encoder_for_n_steps: 0
+  grad_accumulation:
+    num_batches: 1            # Increased to compensate for smaller batch
+  mixed_precision:
+    dtype: "bfloat16"
+
+# ============================================================================
+# REGIME - 10k steps for CTC vs LLM comparison
+# ============================================================================
+regime:
+  num_steps: 10_000
+  score_metric: "wer"
+  publish_metrics_every_n_steps: 100
+  validate_after_n_steps: 500
+  validate_every_n_steps: 1000
+  checkpoint_every_n_steps: 2000
+
+gang: {}
+common: {}
+
+# END OF CONFIG
+#
+# Run with:
+#   torchrun --nproc_per_node=4 \
+#       -m workflows.recipes.wav2vec2.asr \
+#       --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-300m-ctc-4gpu-16gb.yaml \
+#       output_ctc/
+#
+# Evaluate with:
+#   python -m workflows.recipes.wav2vec2.asr.eval \
+#       --config model.path=output_ctc/ws_4.XXXXXXXX/checkpoints/step_10000/model \
+#       --config model.family=wav2vec2_asr \
+#       --config model.arch=300m_v2 \
+#       --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml \
+#       eval_300m_ctc/

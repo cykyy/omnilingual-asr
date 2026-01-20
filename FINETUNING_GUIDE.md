@@ -113,7 +113,7 @@ regime:
 ```bash
 python -m workflows.recipes.wav2vec2.asr \
     --config-file workflows/recipes/wav2vec2/asr/configs/your-config.yaml \
-    output/
+    output/ 2>&1 | tee log.log
 ```
 
 ### Multi-GPU (Recommended)
@@ -122,7 +122,7 @@ python -m workflows.recipes.wav2vec2.asr \
 torchrun --nproc_per_node=4 \
     -m workflows.recipes.wav2vec2.asr \
     --config-file workflows/recipes/wav2vec2/asr/configs/regspeech12-4gpu.yaml \
-    output/
+    output/ 2>&1 | tee log.log
 ```
 
 Training creates checkpoints at `output/ws_1.XXXXXXXX/checkpoints/step_N/`.
@@ -168,7 +168,7 @@ python -m workflows.recipes.wav2vec2.asr.eval \
     --config model.name=omniASR_CTC_300M_v2 \
     --config model.path=null \
     --config-file workflows/recipes/wav2vec2/asr/eval/configs/regspeech12-test.yaml \
-    eval_baseline/
+    eval_baseline_ctc_300m/
 ```
 
 ### Eval Config Example
