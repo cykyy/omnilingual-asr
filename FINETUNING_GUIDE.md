@@ -225,7 +225,7 @@ Create `~/.config/fairseq2/assets/model/my_finetuned_model.yaml`:
 name: bn_regional_CTC_300M_v2
 model_family: wav2vec2_asr
 model_arch: 300m_v2
-checkpoint: /root/omnilingual-asr/output/ws_1.ecbbc39f/checkpoints/step_10000/model/pp_00/tp_00/sdp_00.pt
+checkpoint: /path/to/omnilingual-asr/output/<run-id>/checkpoints/step_10000/model/pp_00/tp_00/sdp_00.pt  # absolute path to your checkpoint
 tokenizer_ref: omniASR_tokenizer_written_v2
 ```
 
@@ -248,7 +248,7 @@ Add your model to `src/omnilingual_asr/cards/models/rc_models_v2.yaml`:
 name: bn_regional_CTC_300M_v2
 model_family: wav2vec2_asr
 model_arch: 300m_v2
-checkpoint: /root/omnilingual-asr/output/ws_1.ecbbc39f/checkpoints/step_10000/model/pp_00/tp_00/sdp_00.pt
+checkpoint: /path/to/omnilingual-asr/output/<run-id>/checkpoints/step_10000/model/pp_00/tp_00/sdp_00.pt  # absolute path to your checkpoint
 tokenizer_ref: omniASR_tokenizer_written_v2
 ```
 

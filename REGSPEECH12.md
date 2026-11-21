@@ -3,6 +3,7 @@
 This branch fine-tunes Meta's `omniASR_CTC_300M_v2` on RegSpeech12, a corpus of spontaneous Bengali
 speech from 12 regions of Bangladesh, and compares it with the zero-shot base model.
 
+- Thesis overview, per-dialect results and transcripts: https://github.com/cykyy/thesis-omni-v2
 - Fine-tuned model: https://huggingface.co/cykyy/bn-regional-asr-300m
 - Dataset: https://www.kaggle.com/datasets/mdrezuwanhassan/regspeech12 ([paper](https://arxiv.org/abs/2510.24096))
 

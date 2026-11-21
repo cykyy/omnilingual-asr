@@ -10,6 +10,14 @@ dataset/*
 output
 output/*
 
+local_dir
+local_dir/*
+
+# n-gram LM decoding work files (scripts/lm)
+lm_work/
+
+.DS_Store
+
 # Build Artifacts
 build/
 dist/

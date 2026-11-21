@@ -1,6 +1,7 @@
 > **Branch `rayth1`: Bengali regional ASR thesis (AIUB, group G90).**
 > We fine-tuned `omniASR_CTC_300M_v2` on RegSpeech12 (test WER 97.93% → 72.97%).
-> Start with [REGSPEECH12.md](REGSPEECH12.md). Model: https://huggingface.co/cykyy/bn-regional-asr-300m
+> Thesis overview, per-dialect results and transcripts: [cykyy/thesis-omni-v2](https://github.com/cykyy/thesis-omni-v2).
+> Code in this branch: start with [REGSPEECH12.md](REGSPEECH12.md). Model: https://huggingface.co/cykyy/bn-regional-asr-300m
 > The rest of this README is Meta's original Omnilingual ASR documentation.
 
 <div align="center">
