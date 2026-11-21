@@ -35,7 +35,12 @@ model-index:
 fully fine-tuned on [RegSpeech12](https://arxiv.org/abs/2510.24096), a corpus of spontaneous Bengali
 speech from 12 regions of Bangladesh.
 
-Code, configs and evaluation logs: https://github.com/cykyy/omnilingual-asr/tree/rayth1
+Developed for the BSc thesis *Fine-Tuning Multilingual ASR for Bengali Regional Dialects: A Zero-Shot
+and Adaptation Study* (American International University-Bangladesh, 2026) by Rayhan Mia, Sudipta Shikha
+Ausmita, Prajnadip Das Samya and Farduna Tajkia, supervised by Aminun Nahar.
+
+- Thesis overview, per-dialect results and test transcripts: https://github.com/cykyy/thesis-omni-v2
+- Training and evaluation code, configs and logs: https://github.com/cykyy/omnilingual-asr/tree/rayth1
 
 ## Results (RegSpeech12 test split)
 
@@ -45,16 +50,36 @@ Code, configs and evaluation logs: https://github.com/cykyy/omnilingual-asr/tree
 | **This model** (fine-tuned, step 10,000) | **72.97%** | **35.44%** | 393.83 |
 
 Scoring is strict: hypotheses and references are compared as-is, with no punctuation removal or
-Unicode normalization. WER with punctuation removed is much lower.
+Unicode normalization. With punctuation removed before scoring, the test WER is 68.01%.
+
+### Per dialect (test split)
+
+| Dialect | Clips | WER | CER |
+|---------|------:|----:|----:|
+| Tangail | 127 | 46.37% | 15.34% |
+| Comilla | 32 | 48.19% | 15.87% |
+| Habiganj | 117 | 61.91% | 24.00% |
+| Narail | 186 | 65.80% | 29.19% |
+| Narsingdi | 137 | 71.42% | 30.57% |
+| Barishal | 101 | 72.89% | 36.09% |
+| Sylhet | 762 | 74.88% | 38.66% |
+| Rangpur | 130 | 76.24% | 39.03% |
+| Sandwip | 131 | 79.15% | 40.26% |
+| Chittagong | 176 | 82.20% | 38.57% |
+| Noakhali | 28 | 82.29% | 44.62% |
+| Kishoreganj | 205 | 87.05% | 47.29% |
+
+Re-scored from the released test transcripts (CER counts characters including spaces). Noakhali and
+Comilla have too few clips for firm conclusions.
 
 ## Training
 
 | Setting | Value |
 |---------|-------|
-| Base model | omniASR_CTC_300M_v2 (325,494,996 parameters, wav2vec2 encoder + CTC head) |
+| Base model | omniASR_CTC_300M_v2 (~326M parameters, wav2vec2 encoder + CTC head) |
 | Tokenizer | omniASR_tokenizer_written_v2 (character level) |
 | Training data | RegSpeech12 train split: 17,049 clips, ~80 h (validation: 2,132 clips, ~10 h) |
-| Steps | 10,000 (13.6 epochs, measured from the checkpoint) |
+| Steps | 10,000 (~13.6 epochs) |
 | Batching | Length-based, up to 1,000,000 audio samples per batch; gradient accumulation 8 (~23 clips per update) |
 | Optimizer | AdamW, lr 5e-05, β = (0.9, 0.98), weight decay 0.01 |
 | LR schedule | Tri-stage: 10% warmup, 40% hold, 50% decay |
@@ -107,7 +132,7 @@ Audio must be 16 kHz mono, up to 40 seconds.
 
 - A WER of ~73% (strict) is far from production quality. The model is a research baseline and is
   useful mainly as a draft transcript for human correction.
-- Trained on ~80 hours spread across many dialects; accuracy per dialect has not been measured yet.
+- Trained on ~80 hours spread across 12 dialects; accuracy varies widely by dialect (46–87% WER, see above).
 - No language model is used during decoding.
 - Results come from a single training run (one seed).
 - Not evaluated outside RegSpeech12.
