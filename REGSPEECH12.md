@@ -42,3 +42,9 @@ Commands: `HOW-TO-RUN.md`. Full guide: `FINETUNING_GUIDE.md`. Inference: `INFERE
 
 `custom-tune-300m.yaml` and `custom-tune-300m-v2.yaml` were early test runs on the dry-run data in
 `dataset/dry_run/`.
+
+## Re-running the training
+
+The original training server is gone. [`scripts/rerun/`](scripts/rerun/README.md) re-runs the
+thesis training on a rented GPU and records the hardware, timings, epoch count, checkpoint hash
+and test results.

@@ -16,6 +16,11 @@ local_dir/*
 # n-gram LM decoding work files (scripts/lm)
 lm_work/
 
+# re-run outputs (scripts/rerun)
+rerun_artifacts/
+rerun_output/
+rerun_*.tar.gz
+
 .DS_Store
 
 # Build Artifacts
