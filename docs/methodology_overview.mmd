@@ -1,0 +1,57 @@
+%% Omnilingual ASR — Methodology Overview
+%% Render at https://mermaid.live or via `npx @mermaid-js/mermaid-cli -i methodology_overview.mmd -o methodology_overview.png`
+
+flowchart TB
+    classDef data        fill:#DCE8F7,stroke:#335B8C,stroke-width:1.5px,color:#0B2545;
+    classDef prep        fill:#E6F0E4,stroke:#4F7A48,stroke-width:1.5px,color:#1F3A1B;
+    classDef tok         fill:#FFF3D6,stroke:#B38B2F,stroke-width:1.5px,color:#4A3800;
+    classDef model       fill:#FDE2CE,stroke:#B45C2E,stroke-width:1.5px,color:#4A2210;
+    classDef train       fill:#E8DDF5,stroke:#6B3FA0,stroke-width:1.5px,color:#2C1450;
+    classDef decode      fill:#D9EEF2,stroke:#2F7A88,stroke-width:1.5px,color:#0E3640;
+    classDef eval        fill:#F7D6E0,stroke:#A93A5C,stroke-width:1.5px,color:#44102A;
+    classDef analysis    fill:#F2E6D9,stroke:#8C5A2A,stroke-width:1.5px,color:#3A2410;
+    classDef findings    fill:#FBD1C7,stroke:#B23A2A,stroke-width:2px,color:#4A1208,font-weight:bold;
+    classDef hardware    fill:#E8E8E8,stroke:#555,stroke-width:1.5px,stroke-dasharray:4 3,color:#222;
+
+    D["<b>1 · DATA</b><br/>Bengali regional speech (~80 hr)<br/>16 kHz · mono · TSV/WRD manifests<br/>RegSpeech12 · 12 dialects · 17,049 clips"]:::data
+    P["<b>2 · PREPROCESSING</b><br/>AudioDecoder → 16 kHz resample<br/>Mono mixdown · LayerNorm<br/>No SpecAugment or augmentation"]:::prep
+    T["<b>3 · TOKENIZATION</b><br/>Character-level<br/>omniASR_tokenizer_written_v2<br/>No text normalization"]:::tok
+    M["<b>4 · MODEL</b><br/>Wav2Vec2 encoder<br/>(CNN frontend + Transformer, 320×↓)<br/>→ CTC head (omniASR_CTC_300M_v2, 325M params)<br/>Pretrained → fine-tuned"]:::model
+    TR["<b>5 · TRAINING</b><br/>CTC loss · AdamW (β=0.9/0.98, wd=0.01)<br/>bfloat16 · length batching · grad. accum. 8<br/>Warmup 10% → Hold 40% → Decay 50%<br/>10K steps"]:::train
+    DE["<b>6 · DECODING</b><br/>Greedy CTC · no language model"]:::decode
+    EV["<b>7 · EVALUATION</b><br/>WER · UER (strict, test split)<br/>per-rank ref.txt / hyp.txt"]:::eval
+
+    AN["<b>8 · ANALYSIS</b>"]:::analysis
+    A1["Per-dialect WER / CER"]:::analysis
+    A2["Error types<br/>(Substitution / Deletion / Insertion)"]:::analysis
+    A3["Script confusion<br/>(Bengali ↔ Assamese)"]:::analysis
+    A4["Vocabulary coverage"]:::analysis
+
+    F["<b>9 · FINDINGS</b><br/>Zero-shot baseline: 97.93% WER<br/>Fine-tuned (10K steps, 80 hr): 72.97% WER"]:::findings
+
+    subgraph HW ["Hardware / Stack"]
+        direction TB
+        HW1["1 GPU (16 GB)<br/>bfloat16"]:::hardware
+        HW2["fairseq2 framework<br/>PyTorch · torchaudio"]:::hardware
+        HW1 --- HW2
+    end
+
+    D  --> P
+    P  --> T
+    T  --> M
+    M  --> TR
+    TR --> DE
+    DE --> EV
+    EV --> AN
+    AN --> A1
+    AN --> A2
+    AN --> A3
+    AN --> A4
+    A1 --> F
+    A2 --> F
+    A3 --> F
+    A4 --> F
+
+    HW -. supports .-> M
+    HW -. supports .-> TR
+    HW -. supports .-> DE

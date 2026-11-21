@@ -1,0 +1,85 @@
+// Omnilingual ASR — Methodology Overview
+// Render with: dot -Tpng -Gdpi=200 docs/methodology_overview.dot -o docs/methodology_overview.png
+// (install Graphviz via `brew install graphviz` if `dot` is missing)
+
+digraph methodology {
+    rankdir=TB;
+    bgcolor="white";
+    splines=ortho;
+    nodesep=0.45;
+    ranksep=0.55;
+    fontname="Helvetica";
+    labelloc=t;
+    label=<<b>Omnilingual ASR — Methodology Overview</b>>;
+    fontsize=18;
+
+    node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=11, margin="0.18,0.10"];
+    edge [fontname="Helvetica", fontsize=10, color="#333333"];
+
+    // Main spine
+    D  [label=<<b>1 · DATA</b><br/>Bengali regional speech (~80 hr)<br/>16 kHz · mono · TSV/WRD manifests<br/>RegSpeech12 · 12 dialects · 17,049 clips>,
+        fillcolor="#DCE8F7", color="#335B8C"];
+    P  [label=<<b>2 · PREPROCESSING</b><br/>AudioDecoder → 16 kHz resample<br/>Mono mixdown · LayerNorm<br/>No SpecAugment or augmentation>,
+        fillcolor="#E6F0E4", color="#4F7A48"];
+    T  [label=<<b>3 · TOKENIZATION</b><br/>Character-level<br/>omniASR_tokenizer_written_v2<br/>No text normalization>,
+        fillcolor="#FFF3D6", color="#B38B2F"];
+    M  [label=<<b>4 · MODEL</b><br/>Wav2Vec2 encoder (CNN + Transformer, 320×↓)<br/>→ CTC head (omniASR_CTC_300M_v2, 325M params)<br/>Pretrained → fine-tuned>,
+        fillcolor="#FDE2CE", color="#B45C2E"];
+    TR [label=<<b>5 · TRAINING</b><br/>CTC loss · AdamW (β=0.9/0.98, wd=0.01)<br/>bfloat16 · length batching · grad. accum. 8<br/>Warmup 10% → Hold 40% → Decay 50% · 10K steps>,
+        fillcolor="#E8DDF5", color="#6B3FA0"];
+    DE [label=<<b>6 · DECODING</b><br/>Greedy CTC · no language model>,
+        fillcolor="#D9EEF2", color="#2F7A88"];
+    EV [label=<<b>7 · EVALUATION</b><br/>WER · UER (strict, test split)<br/>per-rank ref.txt / hyp.txt>,
+        fillcolor="#F7D6E0", color="#A93A5C"];
+
+    // Analysis fan-out
+    AN [label=<<b>8 · ANALYSIS</b>>, fillcolor="#F2E6D9", color="#8C5A2A"];
+    A1 [label="Per-dialect WER / CER",                              fillcolor="#F2E6D9", color="#8C5A2A"];
+    A2 [label="Error types\n(Substitution / Deletion / Insertion)", fillcolor="#F2E6D9", color="#8C5A2A"];
+    A3 [label="Script confusion\n(Bengali ↔ Assamese)",        fillcolor="#F2E6D9", color="#8C5A2A"];
+    A4 [label="Vocabulary coverage",                           fillcolor="#F2E6D9", color="#8C5A2A"];
+
+    F  [label=<<b>9 · FINDINGS</b><br/>Zero-shot baseline: <b>97.93%</b> WER<br/>Fine-tuned (10K steps, 80 hr): <b>72.97%</b> WER>,
+        fillcolor="#FBD1C7", color="#B23A2A", penwidth=2];
+
+    // Hardware side-rail
+    subgraph cluster_hw {
+        label=<<b>Hardware / Stack</b>>;
+        style="rounded,dashed";
+        color="#555555";
+        fontname="Helvetica";
+        fontsize=12;
+        HW1 [label="1 GPU (16 GB)\nbfloat16",
+             fillcolor="#E8E8E8", color="#555555", style="rounded,filled,dashed"];
+        HW2 [label="fairseq2 framework\nPyTorch · torchaudio",
+             fillcolor="#E8E8E8", color="#555555", style="rounded,filled,dashed"];
+        HW1 -> HW2 [style=invis];
+    }
+
+    // Main spine edges
+    D  -> P;
+    P  -> T;
+    T  -> M;
+    M  -> TR;
+    TR -> DE;
+    DE -> EV;
+    EV -> AN;
+
+    // Fan-out
+    AN -> A1;
+    AN -> A2;
+    AN -> A3;
+    AN -> A4;
+    A1 -> F;
+    A2 -> F;
+    A3 -> F;
+    A4 -> F;
+
+    // Hardware supports stages 4–6
+    HW1 -> M  [style=dashed, color="#888888", arrowhead=none, label="supports", fontcolor="#666666"];
+    HW1 -> TR [style=dashed, color="#888888", arrowhead=none];
+    HW1 -> DE [style=dashed, color="#888888", arrowhead=none];
+
+    // Rank hints so the hardware cluster sits alongside training
+    { rank=same; HW1; TR; }
+}
