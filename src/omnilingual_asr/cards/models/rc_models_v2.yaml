@@ -108,5 +108,7 @@ tokenizer_ref: omniASR_tokenizer_written_v2
 name: bn_regional_CTC_300M_v2
 model_family: wav2vec2_asr
 model_arch: 300m_v2
-checkpoint: /root/omnilingual-asr/output/ws_1.ecbbc39f/checkpoints/step_10000/model/pp_00/tp_00/sdp_00.pt
+# Fine-tuned on RegSpeech12 (step 10,000 of output/ws_1.ecbbc39f). Test WER 72.97%.
+# To use a local checkpoint instead, point this to .../step_10000/model/pp_00/tp_00/sdp_00.pt
+checkpoint: https://huggingface.co/cykyy/bn-regional-asr-300m/resolve/main/model.pt
 tokenizer_ref: omniASR_tokenizer_written_v2

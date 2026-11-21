@@ -1,3 +1,8 @@
+> **Branch `rayth1`: Bengali regional ASR thesis (AIUB, group G90).**
+> We fine-tuned `omniASR_CTC_300M_v2` on RegSpeech12 (test WER 97.93% → 72.97%).
+> Start with [REGSPEECH12.md](REGSPEECH12.md). Model: https://huggingface.co/cykyy/bn-regional-asr-300m
+> The rest of this README is Meta's original Omnilingual ASR documentation.
+
 <div align="center">
   <img src="./omniASR_header.jpg" alt="Header image with a collage of on-the-ground photos from the transcription gathering efforts in Pakistan and Liberia." width="100%" />
   <p><i>Photographs captured during corpus creation efforts in Pakistan and Liberia.</i></p>
